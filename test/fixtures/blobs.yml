@@ -1,0 +1,15 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  id: MyString
+  data: MyText
+  size: 1
+  storage_backend: MyString
+  created_at: 2024-10-11 00:15:02
+
+two:
+  id: MyString
+  data: MyText
+  size: 1
+  storage_backend: MyString
+  created_at: 2024-10-11 00:15:02
