@@ -13,14 +13,19 @@ module V1
       # Decode the Base64 data
       decoded_data = Base64.decode64(data)
 
-      # Create a new blob record in the database
-      Blob.create!(id: id, size: decoded_data.bytesize)
-
-      # Attempt to store the blob using the storage adapter
-      if @storage_adapter.store(id, data)
-        render json: { message: "Blob stored successfully" }, status: :created
+      # Validate and create a new blob record in the database
+      blob = Blob.new(id: id, size: decoded_data.bytesize)
+      if blob.save
+        # Attempt to store the blob using the storage adapter
+        if @storage_adapter.store(id, data)
+          render json: { message: "Blob stored successfully" }, status: :created
+        else
+          blob.destroy # Rollback blob creation if storage fails
+          render json: { error: "Failed to store blob" }, status: :unprocessable_entity
+        end
       else
-        render json: { error: "Failed to store blob" }, status: :unprocessable_entity
+        # Handle validation errors
+        render json: { error: "Validation failed: #{blob.errors.full_messages.join(', ')}" }, status: :unprocessable_entity
       end
     rescue ArgumentError => e
       render json: { error: "Invalid data: #{e.message}" }, status: :unprocessable_entity

@@ -3,9 +3,14 @@ module StorageAdapters
     def initialize(storage_path = ENV.fetch("LOCAL_STORAGE_PATH"))
       @storage_path = storage_path
 
-      # Validates the storage path to ensure it exists and is writable.
-      unless Dir.exist?(@storage_path) && File.writable?(@storage_path)
-        raise ArgumentError, "Invalid storage path: #{@storage_path}. It must exist and be writable."
+      # Validate that the storage path exists
+      unless Dir.exist?(@storage_path)
+        raise ArgumentError, "Invalid storage path: #{@storage_path}. It must exist."
+      end
+
+      # Validate that the storage path is writable
+      unless File.writable?(@storage_path)
+        raise ArgumentError, "Invalid storage path: #{@storage_path}. It must be writable."
       end
     end
 
