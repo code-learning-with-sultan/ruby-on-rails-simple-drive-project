@@ -1,16 +1,17 @@
 module StorageAdapters
   class DatabaseStorage < BaseAdapter
-    def store(id, data)
+    def store(id, decoded_data)
       # Blob.create(id: id, size: Base64.decode64(data).bytesize, created_at: Time.current)
     end
 
     def retrieve(id)
-      blob = Blob.find_by(id: id)
-      return unless blob
+      decoded_data = ""
 
-      blob_data = "" # TODO
+      # Encode the response body in Base64
+      encoded_data = Base64.strict_encode64(decoded_data)
 
-      { id: blob.id, data: blob_data, size: blob.size, created_at: blob.created_at }
+      # return the encoded blob
+      encoded_data
     end
   end
 end

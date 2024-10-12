@@ -3,82 +3,58 @@ module V1
     before_action :set_storage_adapter
 
     def create
-      # Ensure required parameters are present and valid
-      raise ArgumentError, "ID is required" if params[:id].blank?
-      raise ArgumentError, "Data is required" if params[:data].blank?
+      blob_params = params.permit(:id, :data)
 
-      id = params[:id]
-      data = @storage_adapter.extract_base64_data(params[:data])
-      raise ArgumentError, "Invalid base64 format" if data.nil? || data.blank? || data.size < 1
+      # Decode Base64 data
+      decoded_data = Base64Processor.decode_base64_data(blob_params[:data])
+      render_error("Invalid base64 format") and return if decoded_data.blank?
 
-      # Decode the Base64 data
-      decoded_data = Base64.decode64(data)
-      raise ArgumentError, "Invalid base64 format" if decoded_data.blank? || decoded_data.size < 1
+      # Create a new blob record
+      blob = Blob.new(id: blob_params[:id], size: decoded_data.bytesize)
+      render_error(blob.errors.full_messages.join(", ")) and return unless blob.save
 
-      # Validate and create a new blob record in the database
-      blob = Blob.new(id: id, size: decoded_data.bytesize)
-
-      if blob.nil?
-        render json: { error: "Blob instantiation failed" }, status: :unprocessable_entity
-        return
-      end
-
-      if blob.save
-        # Attempt to store the blob using the storage adapter
-        if @storage_adapter.store(id, data)
-          render json: { message: "Blob stored successfully" }, status: :created
-        else
-          blob.destroy # Rollback blob creation if storage fails
-          render json: { error: "Failed to store blob" }, status: :unprocessable_entity
-        end
+      # Store the blob in the specified storage
+      if @storage_adapter.store(blob.id, decoded_data)
+        render json: { message: "Blob stored successfully" }, status: :created
       else
-        # Handle validation errors
-        render json: { error: "Validation failed: #{blob.errors.full_messages.join(', ')}" }, status: :unprocessable_entity
+        blob.destroy # Rollback blob creation if storage fails
+        render_error("Failed to store blob")
       end
     rescue ArgumentError => e
-      render json: { error: "Invalid data: #{e.message}" }, status: :unprocessable_entity
+      render_error("Invalid data: #{e.message}")
     rescue ActiveRecord::RecordInvalid => e
-      render json: { error: "Database error: #{e.message}" }, status: :unprocessable_entity
-    rescue ActiveRecord::RecordNotUnique => e
-      render json: { error: "Database error: Blob with this ID already exists" }, status: :unprocessable_entity
-    rescue StandardError => e
-      render json: { error: "An unexpected error occurred: #{e.message}" }, status: :internal_server_error
-    rescue => e # Catch-all for any other errors
-      render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
+      render_error("Database error: #{e.message}")
+    rescue ActiveRecord::RecordNotUnique
+      render_error("Blob with this ID already exists", :conflict)
     end
 
     def show
-      # Ensure required parameters are present and valid
-      raise ArgumentError, "ID is required" if params[:id].blank?
-
-      # Attempt to find the corresponding blob in the database
+      # Find the blob by ID
       blob = Blob.find_by(id: params[:id])
-      return render json: { error: "Blob not found" }, status: :not_found unless blob
+      render_error("Blob not found", :not_found) and return unless blob
 
-      # Retrieve the encoded data from the storage adapter
       encoded_data = @storage_adapter.retrieve(blob.id)
-      return render json: { error: "Blob file not found" }, status: :not_found unless encoded_data
+      render_error("Blob file not found", :not_found) and return unless encoded_data
 
-      render json: { id: blob.id, data: encoded_data, size: blob.size, created_at: blob.created_at }
-    rescue StandardError => e
-      render json: { error: "An error occurred while retrieving the blob: #{e.message}" }, status: :internal_server_error
-    rescue => e # Catch-all for any other errors
-      render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
+      render json: {
+        id: blob.id,
+        data: encoded_data,
+        size: blob.size,
+        created_at: blob.created_at
+      }
     end
 
     private
 
-    # Sets the appropriate storage adapter based on the environment configuration.
-    #
-    # @raise [RuntimeError] If an invalid storage backend is specified.
+    # Set the appropriate storage adapter
     def set_storage_adapter
-      @storage_adapter = case ENV["STORAGE_BACKEND"]
-      when "s3" then StorageAdapters::S3Storage.new
-      when "db" then StorageAdapters::DatabaseStorage.new
-      when "local" then StorageAdapters::LocalStorage.new
-      when "ftp" then StorageAdapters::FTPStorage.new
-      else raise "Invalid storage backend"
-      end
+      @storage_adapter = StorageAdapterFactory.build(ENV["STORAGE_BACKEND"])
+      raise "Invalid storage backend" unless @storage_adapter
+    end
+
+    # Render JSON error message
+    def render_error(message, status = :unprocessable_entity)
+      render json: { error: message }, status: status
     end
   end
 end

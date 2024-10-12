@@ -1,6 +1,6 @@
 module StorageAdapters
   class LocalStorage < BaseAdapter
-    def initialize(storage_path = ENV.fetch("LOCAL_STORAGE_PATH"))
+    def initialize(storage_path = ENV["LOCAL_STORAGE_PATH"])
       @storage_path = storage_path
 
       # Validate that the storage path exists
@@ -14,14 +14,11 @@ module StorageAdapters
       end
     end
 
-    def store(id, data)
+    def store(id, decoded_data)
       # Generates the file path for the blob based on its ID.
       filepath = File.join(@storage_path, id)
 
       begin
-        # Decode the Base64 data
-        decoded_data = Base64.decode64(data)
-
         # Write the decoded data to a file
         File.open(filepath, "wb") do |file|
           file.write(decoded_data)

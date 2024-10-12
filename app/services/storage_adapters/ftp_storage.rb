@@ -3,9 +3,9 @@ require "net/ftp"
 module StorageAdapters
   class FTPStorage < BaseAdapter
     def initialize(
-      host = ENV.fetch("FTP_HOST"),
-      username = ENV.fetch("FTP_USERNAME"),
-      password = ENV.fetch("FTP_PASSWORD")
+      host = ENV["FTP_HOST"],
+      username = ENV["FTP_USERNAME"],
+      password = ENV["FTP_PASSWORD"]
     )
       @ftp = Net::FTP.new
       begin
@@ -20,11 +20,8 @@ module StorageAdapters
       end
     end
 
-    def store(id, data)
+    def store(id, decoded_data)
       begin
-        # Decode the Base64 data
-        decoded_data = Base64.decode64(data)
-
         # Upload the file to the FTP server
         @ftp.putbinaryfile(StringIO.new(decoded_data), id)
 

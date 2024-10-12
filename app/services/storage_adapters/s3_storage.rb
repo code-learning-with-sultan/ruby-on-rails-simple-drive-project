@@ -5,20 +5,17 @@ require "base64"
 module StorageAdapters
   class S3Storage < BaseAdapter
     def initialize(
-      bucket_url = ENV.fetch("S3_BUCKET_URL"),
-      access_key = ENV.fetch("S3_ACCESS_KEY"),
-      secret_key = ENV.fetch("S3_SECRET_KEY")
+      bucket_url = ENV["S3_BUCKET_URL"],
+      access_key = ENV["S3_ACCESS_KEY"],
+      secret_key = ENV["S3_SECRET_KEY"]
     )
       @bucket_url = bucket_url
       @access_key = access_key
       @secret_key = secret_key
     end
 
-    def store(id, data)
+    def store(id, decoded_data)
       begin
-        # Decode the Base64 data
-        decoded_data = Base64.decode64(data)
-
         # Prepare the URI and HTTP request
         uri = URI("#{@bucket_url}/#{id}")
         request = Net::HTTP::Put.new(uri)
@@ -33,12 +30,8 @@ module StorageAdapters
         end
 
         true # Return true if everything succeeded
-      rescue ArgumentError => e
-        raise ArgumentError, "Base64 decoding error for blob with ID #{id}: #{e.message}"
       rescue SocketError, Net::OpenTimeout, Net::ReadTimeout => e
         raise "Network error while storing blob with ID #{id}: #{e.message}"
-      rescue StandardError => e
-        raise "An error occurred while storing blob with ID #{id}: #{e.message}"
       rescue => e # Catch-all for any other errors
         raise "An error occurred while storing blob with ID #{id}: #{e.message}"
       end
@@ -62,10 +55,10 @@ module StorageAdapters
 
         # return the encoded blob
         encoded_data
-      rescue ArgumentError => e
-        raise ArgumentError, e.message
       rescue SocketError, Net::OpenTimeout, Net::ReadTimeout => e
         raise "Network error while retrieve blob with ID #{id}: #{e.message}"
+      rescue ArgumentError => e
+        raise ArgumentError, e.message
       rescue StandardError => e
         raise "An error occurred while retrieve blob with ID #{id}: #{e.message}"
       rescue => e # Catch-all for any other errors
