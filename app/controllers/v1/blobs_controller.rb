@@ -53,10 +53,10 @@ module V1
     # @raise [RuntimeError] If an invalid storage backend is specified.
     def set_storage_adapter
       @storage_adapter = case ENV["STORAGE_BACKEND"]
-      when "s3" then S3Storage.new
-      when "db" then DatabaseStorage.new
-      when "local" then LocalStorage.new
-      when "ftp" then FTPStorage.new
+      when "s3" then StorageAdapters::S3Storage.new
+      when "db" then StorageAdapters::DatabaseStorage.new
+      when "local" then StorageAdapters::LocalStorage.new
+      when "ftp" then StorageAdapters::FTPStorage.new
       else raise "Invalid storage backend"
       end
     end
