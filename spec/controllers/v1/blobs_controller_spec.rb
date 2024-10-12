@@ -18,16 +18,17 @@ RSpec.describe V1::BlobsController, type: :controller do
   let(:decoded_data) { Base64.decode64(encoded_data) }
 
   before do
-    allow(StorageAdapters::LocalStorage).to receive(:new).and_return(storage_adapter)
-    allow(storage_adapter).to receive(:extract_base64_data).with(blob_data).and_return(encoded_data)
-    allow(Base64).to receive(:decode64).with(encoded_data).and_return(decoded_data)
+    allow(StorageAdapterFactory).to receive(:build).and_return(storage_adapter)
+    allow(storage_adapter).to receive(:store).with(blob_id, encoded_data).and_return(true)
+    allow(storage_adapter).to receive(:retrieve).with(blob_id).and_return(encoded_data)
+    allow(Base64Processor).to receive(:decode_base64_data).with(blob_data).and_return(encoded_data)
+    allow(Blob).to receive(:new).and_call_original
   end
 
   describe 'POST #create' do
     context 'with valid parameters' do
       it 'creates a new blob and stores it successfully' do
-        allow(storage_adapter).to receive(:store).with(blob_id, encoded_data).and_return(true)
-        allow(Blob).to receive(:new).and_call_original
+        allow(Blob).to receive(:new).with(id: blob_id, size: decoded_data.bytesize).and_return(Blob.new)
 
         request.headers['Authorization'] = "Bearer #{valid_token}"
         post :create, params: { id: blob_id, data: blob_data }
@@ -43,17 +44,19 @@ RSpec.describe V1::BlobsController, type: :controller do
         post :create, params: { data: blob_data }
 
         expect(response).to have_http_status(:unprocessable_entity)
-        expect(JSON.parse(response.body)).to eq({ "error" => "Invalid data: ID is required" })
+        expect(JSON.parse(response.body)).to eq({ "error" => "Id can't be blank, Id only allows alphanumeric characters, hyphens, and underscores" })
       end
     end
 
     context 'with missing data' do
       it 'returns an error' do
+        allow(Base64Processor).to receive(:decode_base64_data).with(nil).and_return(nil)
+
         request.headers['Authorization'] = "Bearer #{valid_token}"
         post :create, params: { id: blob_id }
 
         expect(response).to have_http_status(:unprocessable_entity)
-        expect(JSON.parse(response.body)).to eq({ "error" => "Invalid data: Data is required" })
+        expect(JSON.parse(response.body)).to eq({ "error" => "Invalid base64 format" })
       end
     end
 
@@ -71,7 +74,6 @@ RSpec.describe V1::BlobsController, type: :controller do
 
     context 'when a database error occurs' do
       it 'returns an error' do
-        allow(storage_adapter).to receive(:store).with(blob_id, encoded_data).and_return(true)
         allow(Blob).to receive(:new).and_raise(ActiveRecord::RecordInvalid.new(Blob.new))
 
         request.headers['Authorization'] = "Bearer #{valid_token}"
@@ -105,27 +107,27 @@ RSpec.describe V1::BlobsController, type: :controller do
     context 'with duplicate blob ID' do
       it 'returns an error' do
         allow(storage_adapter).to receive(:store).with(blob_id, encoded_data).and_return(true)
-        allow(Blob).to receive(:new).with(id: blob_id, size: decoded_data.bytesize).and_raise(ActiveRecord::RecordNotUnique)
+        allow(Blob).to receive(:new).and_raise(ActiveRecord::RecordNotUnique)
 
         request.headers['Authorization'] = "Bearer #{valid_token}"
         post :create, params: { id: blob_id, data: blob_data }
 
-        expect(response).to have_http_status(:unprocessable_entity)
-        expect(JSON.parse(response.body)).to eq({ "error" => "Database error: Blob with this ID already exists" })
+        expect(response).to have_http_status(:conflict)
+        expect(JSON.parse(response.body)).to eq({ "error" => "Blob with this ID already exists" })
       end
     end
 
     context 'with invalid data format' do
       it 'returns an error' do
-        invalid_data = "invalid_data_format"  # Adjust this based on what you consider invalid
+        invalid_data = "invalid_data_format"
 
-        allow(storage_adapter).to receive(:extract_base64_data).with(invalid_data)
+        allow(Base64Processor).to receive(:decode_base64_data).with(invalid_data).and_return(nil)
 
         request.headers['Authorization'] = "Bearer #{valid_token}"
         post :create, params: { id: blob_id, data: invalid_data }
 
         expect(response).to have_http_status(:unprocessable_entity)
-        expect(JSON.parse(response.body)).to eq({ "error" => "Invalid data: Invalid base64 format" })
+        expect(JSON.parse(response.body)).to eq({ "error" => "Invalid base64 format" })
       end
     end
   end
@@ -135,8 +137,6 @@ RSpec.describe V1::BlobsController, type: :controller do
       let!(:blob) { Blob.create!(id: blob_id, size: decoded_data.bytesize) }
 
       it 'retrieves the blob successfully' do
-        allow(storage_adapter).to receive(:retrieve).with(blob.id).and_return(encoded_data)
-
         request.headers['Authorization'] = "Bearer #{valid_token}"
         get :show, params: { id: blob_id }
 
@@ -159,7 +159,6 @@ RSpec.describe V1::BlobsController, type: :controller do
       let!(:blob) { Blob.create!(id: blob_id, size: decoded_data.bytesize) }
 
       it 'returns an error' do
-        # Simulate that the file data is missing by returning nil from the storage adapter
         allow(storage_adapter).to receive(:retrieve).with(blob.id).and_return(nil)
 
         request.headers['Authorization'] = "Bearer #{valid_token}"
