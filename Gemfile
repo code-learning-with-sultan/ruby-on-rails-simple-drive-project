@@ -2,12 +2,19 @@ source "https://rubygems.org"
 
 # Bundle edge Rails instead: gem "rails", github: "rails/rails", branch: "main"
 gem "rails", "~> 7.2.1"
+
+# PostgreSQL adapter for ActiveRecord
+gem "pg", ">= 1.1"
+
 # Use sqlite3 as the database for Active Record
 gem "sqlite3", ">= 1.4"
+
 # Use the Puma web server [https://github.com/puma/puma]
 gem "puma", ">= 5.0"
+
 # Build JSON APIs with ease [https://github.com/rails/jbuilder]
 # gem "jbuilder"
+
 # Use Redis adapter to run Action Cable in production
 # gem "redis", ">= 4.0.1"
 
@@ -16,6 +23,15 @@ gem "puma", ">= 5.0"
 
 # Use Active Model has_secure_password [https://guides.rubyonrails.org/active_model_basics.html#securepassword]
 # gem "bcrypt", "~> 3.1.7"
+
+# HTTP client for interacting with S3 without using AWS SDK
+gem "http", "~> 5.0"
+
+# Environment variable management
+gem "dotenv-rails"
+
+# JWT for authentication
+gem "jwt"
 
 # Windows does not include zoneinfo files, so bundle the tzinfo-data gem
 gem "tzinfo-data", platforms: %i[ windows jruby ]
@@ -38,6 +54,11 @@ group :development, :test do
 
   # Omakase Ruby styling [https://github.com/rails/rubocop-rails-omakase/]
   gem "rubocop-rails-omakase", require: false
+
+  # Testing framework
+  gem "rspec-rails"
+
+  gem "factory_bot_rails"
+
+  gem "faker"
 end
-
-
