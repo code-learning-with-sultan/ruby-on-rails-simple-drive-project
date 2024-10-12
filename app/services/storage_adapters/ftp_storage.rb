@@ -1,29 +1,27 @@
 require "net/ftp"
 
 module StorageAdapters
-  class FTPStorage < BaseAdapter
+  class FtpStorage < BaseAdapter
     def initialize(
       host = ENV["FTP_HOST"],
+      port = ENV["FTP_PORT"],
       username = ENV["FTP_USERNAME"],
       password = ENV["FTP_PASSWORD"]
     )
-      @ftp = Net::FTP.new
-      begin
-        @ftp.connect(host)
-        @ftp.login(username, password)
-      rescue Net::FTPPermError => e
-        raise "Permission error while connecting to FTP: #{e.message}"
-      rescue StandardError => e
-        raise "An error occurred while connecting to FTP: #{e.message}"
-      rescue => e # Catch-all for any other errors
-        raise "An error occurred while connecting to FTP: #{e.message}"
-      end
+      connect(host, port, username, password)
     end
 
     def store(id, decoded_data)
       begin
-        # Upload the file to the FTP server
-        @ftp.putbinaryfile(StringIO.new(decoded_data), id)
+        # Create a temporary file to store the decoded data
+        Tempfile.create([ "uploaded_file", ".bin" ]) do |file|
+          file.binmode          # Set binary mode for the file
+          file.write(decoded_data)  # Write the decoded data to the file
+          file.rewind           # Rewind the file pointer to the beginning
+
+          # Upload the file to the FTP server
+          @ftp.putbinaryfile(file.path, id)  # Use the file path for uploading
+        end
 
         true # Return true if the operation succeeded
       rescue ArgumentError => e
@@ -57,6 +55,20 @@ module StorageAdapters
         raise "An error occurred while retrieving blob with ID #{id}: #{e.message}"
       rescue => e # Catch-all for any other errors
         raise "An error occurred while retrieving blob with ID #{id}: #{e.message}"
+      end
+    end
+
+    def connect(host, port, username, password)
+      @ftp = Net::FTP.new
+      begin
+        @ftp.connect(host, port)
+        @ftp.login(username, password)
+      rescue Net::FTPPermError => e
+        raise "Permission error while connecting to FTP: #{e.message}"
+      rescue StandardError => e
+        raise "An error occurred while connecting to FTP: #{e.message}"
+      rescue => e # Catch-all for any other errors
+        raise "An error occurred while connecting to FTP: #{e.message}"
       end
     end
   end
