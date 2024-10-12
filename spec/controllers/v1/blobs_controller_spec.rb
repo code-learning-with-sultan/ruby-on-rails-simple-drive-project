@@ -27,7 +27,7 @@ RSpec.describe V1::BlobsController, type: :controller do
     context 'with valid parameters' do
       it 'creates a new blob and stores it successfully' do
         allow(storage_adapter).to receive(:store).with(blob_id, encoded_data).and_return(true)
-        allow(Blob).to receive(:create!).with(id: blob_id, size: decoded_data.bytesize)
+        allow(Blob).to receive(:new).and_call_original
 
         request.headers['Authorization'] = "Bearer #{valid_token}"
         post :create, params: { id: blob_id, data: blob_data }
@@ -72,13 +72,60 @@ RSpec.describe V1::BlobsController, type: :controller do
     context 'when a database error occurs' do
       it 'returns an error' do
         allow(storage_adapter).to receive(:store).with(blob_id, encoded_data).and_return(true)
-        allow(Blob).to receive(:create!).and_raise(ActiveRecord::RecordInvalid.new(Blob.new))
+        allow(Blob).to receive(:new).and_raise(ActiveRecord::RecordInvalid.new(Blob.new))
 
         request.headers['Authorization'] = "Bearer #{valid_token}"
         post :create, params: { id: blob_id, data: blob_data }
 
         expect(response).to have_http_status(:unprocessable_entity)
         expect(JSON.parse(response.body)).to eq({ "error" => "Database error: Validation failed: " })
+      end
+    end
+
+    # New Test Cases
+    context 'without Authorization token' do
+      it 'returns an error' do
+        post :create, params: { id: blob_id, data: blob_data }
+
+        expect(response).to have_http_status(:unauthorized)
+        expect(JSON.parse(response.body)).to eq({ "error" => "Authorization token is required" })
+      end
+    end
+
+    context 'with wrong Authorization token' do
+      it 'returns an error' do
+        request.headers['Authorization'] = "Bearer invalid_token"
+        post :create, params: { id: blob_id, data: blob_data }
+
+        expect(response).to have_http_status(:unauthorized)
+        expect(JSON.parse(response.body)).to eq({ "error" => "Invalid Authorization token" })
+      end
+    end
+
+    context 'with duplicate blob ID' do
+      it 'returns an error' do
+        allow(storage_adapter).to receive(:store).with(blob_id, encoded_data).and_return(true)
+        allow(Blob).to receive(:new).with(id: blob_id, size: decoded_data.bytesize).and_raise(ActiveRecord::RecordNotUnique)
+
+        request.headers['Authorization'] = "Bearer #{valid_token}"
+        post :create, params: { id: blob_id, data: blob_data }
+
+        expect(response).to have_http_status(:unprocessable_entity)
+        expect(JSON.parse(response.body)).to eq({ "error" => "Database error: Blob with this ID already exists" })
+      end
+    end
+
+    context 'with invalid data format' do
+      it 'returns an error' do
+        invalid_data = "invalid_data_format"  # Adjust this based on what you consider invalid
+
+        allow(storage_adapter).to receive(:extract_base64_data).with(invalid_data)
+
+        request.headers['Authorization'] = "Bearer #{valid_token}"
+        post :create, params: { id: blob_id, data: invalid_data }
+
+        expect(response).to have_http_status(:unprocessable_entity)
+        expect(JSON.parse(response.body)).to eq({ "error" => "Invalid data: Invalid base64 format" })
       end
     end
   end
@@ -105,6 +152,21 @@ RSpec.describe V1::BlobsController, type: :controller do
 
         expect(response).to have_http_status(:not_found)
         expect(JSON.parse(response.body)).to eq({ "error" => "Blob not found" })
+      end
+    end
+
+    context 'when file data is missing' do
+      let!(:blob) { Blob.create!(id: blob_id, size: decoded_data.bytesize) }
+
+      it 'returns an error' do
+        # Simulate that the file data is missing by returning nil from the storage adapter
+        allow(storage_adapter).to receive(:retrieve).with(blob.id).and_return(nil)
+
+        request.headers['Authorization'] = "Bearer #{valid_token}"
+        get :show, params: { id: blob_id }
+
+        expect(response).to have_http_status(:not_found)
+        expect(JSON.parse(response.body)).to eq({ "error" => "Blob file not found" })
       end
     end
   end

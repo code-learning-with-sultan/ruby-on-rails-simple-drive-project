@@ -5,6 +5,11 @@ class ApplicationController < ActionController::API
 
   def authenticate
     token = request.headers["Authorization"]&.split(" ")&.last
-    render json: { error: "Unauthorized" }, status: :unauthorized unless token == ENV["AUTH_TOKEN"]
+
+    if token.blank?
+      render json: { error: "Authorization token is required" }, status: :unauthorized
+    elsif token != ENV["AUTH_TOKEN"]
+      render json: { error: "Invalid Authorization token" }, status: :unauthorized
+    end
   end
 end

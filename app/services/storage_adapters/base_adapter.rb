@@ -9,41 +9,19 @@ module StorageAdapters
         if input.match?(data_uri_regex)
           # If it's a data URI, capture the Base64 part
           match = input.match(data_uri_regex)
-          match[2] # Return the Base64 part
+          base64_data = match[2] # Return the Base64 part
         else
           # If it's just a Base64 string, return it directly
-          input
+          base64_data = input
         end
+
+        # Validate if the extracted string is a valid Base64 format
+        valid_base64?(base64_data) ? base64_data : nil
       end
 
-      # Decodes Base64 encoded data and validates its integrity
-      #
-      # @param data [String] Base64 encoded data
-      # @return [String] Decoded data
-      # @raise [ArgumentError] if data is not a String, nil, or empty, or if decoding fails
-      def get_decoded_data(base64_data)
-        # Validate that input is a String
-        raise ArgumentError, "Data must be a String" unless base64_data.is_a?(String)
-        raise ArgumentError, "Data cannot be nil or empty" if base64_data.nil? || base64_data.empty?
-
-        begin
-          # Decode the Base64 data
-          decoded_data = Base64.decode64(base64_data)
-
-          # Validate that the original data matches the re-encoded data
-          unless Base64.strict_encode64(decoded_data) == base64_data
-            raise ArgumentError, "Invalid Base64 data: data does not match after decoding."
-          end
-
-          # Return the successfully decoded data
-          decoded_data
-        rescue ArgumentError => e
-          # Raise a more specific error message if decoding fails
-          raise ArgumentError, "Base64 decoding error: #{e.message}"
-        rescue StandardError => e
-          # Catch any unexpected errors during the decoding process
-          raise "An unexpected error occurred during Base64 decoding: #{e.message}"
-        end
+      def valid_base64?(data)
+        # Check if the string is valid Base64
+        data.is_a?(String) && data.match?(/\A[+\/0-9A-Za-z]{1,}={0,2}\z/)
       end
 
       # Abstract method for storing data in the backend

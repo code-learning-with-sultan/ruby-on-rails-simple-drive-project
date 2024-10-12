@@ -9,12 +9,20 @@ module V1
 
       id = params[:id]
       data = @storage_adapter.extract_base64_data(params[:data])
+      raise ArgumentError, "Invalid base64 format" if data.nil? || data.blank? || data.size < 1
 
       # Decode the Base64 data
       decoded_data = Base64.decode64(data)
+      raise ArgumentError, "Invalid base64 format" if decoded_data.blank? || decoded_data.size < 1
 
       # Validate and create a new blob record in the database
       blob = Blob.new(id: id, size: decoded_data.bytesize)
+
+      if blob.nil?
+        render json: { error: "Blob instantiation failed" }, status: :unprocessable_entity
+        return
+      end
+
       if blob.save
         # Attempt to store the blob using the storage adapter
         if @storage_adapter.store(id, data)
@@ -31,8 +39,12 @@ module V1
       render json: { error: "Invalid data: #{e.message}" }, status: :unprocessable_entity
     rescue ActiveRecord::RecordInvalid => e
       render json: { error: "Database error: #{e.message}" }, status: :unprocessable_entity
+    rescue ActiveRecord::RecordNotUnique => e
+      render json: { error: "Database error: Blob with this ID already exists" }, status: :unprocessable_entity
     rescue StandardError => e
       render json: { error: "An unexpected error occurred: #{e.message}" }, status: :internal_server_error
+    rescue => e # Catch-all for any other errors
+      render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
     end
 
     def show
@@ -45,10 +57,13 @@ module V1
 
       # Retrieve the encoded data from the storage adapter
       encoded_data = @storage_adapter.retrieve(blob.id)
+      return render json: { error: "Blob file not found" }, status: :not_found unless encoded_data
 
       render json: { id: blob.id, data: encoded_data, size: blob.size, created_at: blob.created_at }
     rescue StandardError => e
       render json: { error: "An error occurred while retrieving the blob: #{e.message}" }, status: :internal_server_error
+    rescue => e # Catch-all for any other errors
+      render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
     end
 
     private

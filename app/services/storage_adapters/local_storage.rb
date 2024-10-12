@@ -36,6 +36,8 @@ module StorageAdapters
         raise "File not found error occurred while writing to #{filepath}"
       rescue StandardError => e
         raise "An error occurred while storing blob with ID #{id}: #{e.message}"
+      rescue => e # Catch-all for any other errors
+        raise "An error occurred while storing blob with ID #{id}: #{e.message}"
       end
     end
 
@@ -60,6 +62,8 @@ module StorageAdapters
       rescue Errno::EACCES
         raise "Permission denied while reading from #{filepath}"
       rescue StandardError => e
+        raise "An error occurred while retrieving blob with ID #{id}: #{e.message}"
+      rescue => e # Catch-all for any other errors
         raise "An error occurred while retrieving blob with ID #{id}: #{e.message}"
       end
     end

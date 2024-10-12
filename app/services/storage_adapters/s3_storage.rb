@@ -39,6 +39,8 @@ module StorageAdapters
         raise "Network error while storing blob with ID #{id}: #{e.message}"
       rescue StandardError => e
         raise "An error occurred while storing blob with ID #{id}: #{e.message}"
+      rescue => e # Catch-all for any other errors
+        raise "An error occurred while storing blob with ID #{id}: #{e.message}"
       end
     end
 
@@ -65,6 +67,8 @@ module StorageAdapters
       rescue SocketError, Net::OpenTimeout, Net::ReadTimeout => e
         raise "Network error while retrieve blob with ID #{id}: #{e.message}"
       rescue StandardError => e
+        raise "An error occurred while retrieve blob with ID #{id}: #{e.message}"
+      rescue => e # Catch-all for any other errors
         raise "An error occurred while retrieve blob with ID #{id}: #{e.message}"
       end
     end

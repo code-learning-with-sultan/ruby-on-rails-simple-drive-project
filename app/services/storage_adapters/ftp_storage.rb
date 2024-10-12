@@ -15,6 +15,8 @@ module StorageAdapters
         raise "Permission error while connecting to FTP: #{e.message}"
       rescue StandardError => e
         raise "An error occurred while connecting to FTP: #{e.message}"
+      rescue => e # Catch-all for any other errors
+        raise "An error occurred while connecting to FTP: #{e.message}"
       end
     end
 
@@ -35,6 +37,8 @@ module StorageAdapters
         raise "FTP reply error while storing blob with ID #{id}: #{e.message}"
       rescue StandardError => e
         raise "An error occurred while storing blob with ID #{id}: #{e.message}"
+      rescue => e # Catch-all for any other errors
+        raise "An error occurred while storing blob with ID #{id}: #{e.message}"
       end
     end
 
@@ -53,6 +57,8 @@ module StorageAdapters
       rescue Net::FTPReplyError => e
         raise "FTP reply error while retrieving blob with ID #{id}: #{e.message}"
       rescue StandardError => e
+        raise "An error occurred while retrieving blob with ID #{id}: #{e.message}"
+      rescue => e # Catch-all for any other errors
         raise "An error occurred while retrieving blob with ID #{id}: #{e.message}"
       end
     end
