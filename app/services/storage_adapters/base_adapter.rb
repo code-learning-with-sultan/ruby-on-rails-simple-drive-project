@@ -2,6 +2,20 @@ module StorageAdapters
     class BaseAdapter
       def initialize; end
 
+      def extract_base64_data(input)
+        # Regex to match data URIs and extract Base64 portion
+        data_uri_regex = /^data:(.*?);base64,(.*)$/
+
+        if input.match?(data_uri_regex)
+          # If it's a data URI, capture the Base64 part
+          match = input.match(data_uri_regex)
+          match[2] # Return the Base64 part
+        else
+          # If it's just a Base64 string, return it directly
+          input
+        end
+      end
+
       # Decodes Base64 encoded data and validates its integrity
       #
       # @param data [String] Base64 encoded data

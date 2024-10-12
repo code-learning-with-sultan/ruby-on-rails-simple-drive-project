@@ -20,8 +20,8 @@ module StorageAdapters
 
     def store(id, data)
       begin
-        # Attempt to decode Base64 data
-        decoded_data = get_decoded_data(data)
+        # Decode the Base64 data
+        decoded_data = Base64.decode64(data)
 
         # Upload the file to the FTP server
         @ftp.putbinaryfile(StringIO.new(decoded_data), id)

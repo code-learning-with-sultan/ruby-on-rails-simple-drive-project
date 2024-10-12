@@ -16,8 +16,8 @@ module StorageAdapters
 
     def store(id, data)
       begin
-        # Attempt to decode Base64 data
-        decoded_data = get_decoded_data(data)
+        # Decode the Base64 data
+        decoded_data = Base64.decode64(data)
 
         # Prepare the URI and HTTP request
         uri = URI("#{@bucket_url}/#{id}")

@@ -14,8 +14,8 @@ module StorageAdapters
       filepath = File.join(@storage_path, id)
 
       begin
-        # Attempt to decode Base64 data
-        decoded_data = get_decoded_data(data)
+        # Decode the Base64 data
+        decoded_data = Base64.decode64(data)
 
         # Write the decoded data to a file
         File.open(filepath, "wb") do |file|
@@ -23,6 +23,8 @@ module StorageAdapters
         end
 
         true # Return true if the operation succeeded
+      rescue ArgumentError => e
+        raise ArgumentError, "Base64 decoding error for blob with ID #{id}: #{e.message}"
       rescue Errno::EACCES
         raise "Permission denied while writing to #{filepath}"
       rescue Errno::ENOENT

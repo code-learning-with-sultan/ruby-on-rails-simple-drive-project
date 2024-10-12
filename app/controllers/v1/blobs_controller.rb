@@ -8,10 +8,10 @@ module V1
       raise ArgumentError, "Data is required" if params[:data].blank?
 
       id = params[:id]
-      data = params[:data]
+      data = @storage_adapter.extract_base64_data(params[:data])
 
-      # Validate and decode the Base64 data
-      decoded_data = @storage_adapter.get_decoded_data(data)
+      # Decode the Base64 data
+      decoded_data = Base64.decode64(data)
 
       # Create a new blob record in the database
       Blob.create!(id: id, size: decoded_data.bytesize)
