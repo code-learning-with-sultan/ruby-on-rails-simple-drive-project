@@ -1,6 +1,6 @@
 # Blob Storage API
 
-This is a Ruby on Rails API for storing and retrieving blobs using various storage backends. The application supports local storage, FTP, and S3 as storage options. It includes authentication via Bearer tokens and provides detailed error handling.
+This is a Ruby on Rails API for storing and retrieving blobs using various storage backends. The application supports local storage, FTP, Database, and S3 as storage options. It includes authentication via Bearer tokens and provides detailed error handling.
 
 ## Table of Contents
 
