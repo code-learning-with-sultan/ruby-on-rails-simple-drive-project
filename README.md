@@ -10,8 +10,6 @@ This is a Ruby on Rails API for storing and retrieving blobs using various stora
 - [Running the Application](#running-the-application)
 - [Testing the Application](#testing-the-application)
 - [API Endpoints](#api-endpoints)
-- [Contributing](#contributing)
-- [License](#license)
 
 ## Requirements
 
