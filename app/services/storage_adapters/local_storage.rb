@@ -31,8 +31,6 @@ module StorageAdapters
         raise "File not found error occurred while writing to #{filepath}"
       rescue StandardError => e
         raise "An error occurred while storing blob with ID #{id}: #{e.message}"
-      rescue => e # Catch-all for any other errors
-        raise "An error occurred while storing blob with ID #{id}: #{e.message}"
       end
     end
 
@@ -48,6 +46,7 @@ module StorageAdapters
       begin
         # Read the file's contents
         decoded_data = File.read(filepath)
+        raise "Data with ID #{id} not found", :not_found if decoded_data.nil? || decoded_data.empty?
 
         # Encode the response body in Base64
         encoded_data = Base64.strict_encode64(decoded_data)
@@ -57,8 +56,6 @@ module StorageAdapters
       rescue Errno::EACCES
         raise "Permission denied while reading from #{filepath}"
       rescue StandardError => e
-        raise "An error occurred while retrieving blob with ID #{id}: #{e.message}"
-      rescue => e # Catch-all for any other errors
         raise "An error occurred while retrieving blob with ID #{id}: #{e.message}"
       end
     end

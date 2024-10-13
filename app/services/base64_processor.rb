@@ -3,6 +3,17 @@ class Base64Processor
   BASE64_REGEX = /\A[+\/0-9A-Za-z]{1,}={0,2}\z/.freeze
 
   class << self
+    # Decode the provided Base64 string into binary data.
+    def decode_base64_data(data)
+      return if data.blank?
+
+      extracted_data = extract_base64_data(data)
+      return if extracted_data.blank?
+
+      decoded_data = Base64.decode64(extracted_data)
+      decoded_data.presence # Rails' `presence` returns nil if the string is blank
+    end
+
     # Extract Base64 data from a given input, handling both plain Base64 strings and data URIs.
     def extract_base64_data(input)
       return unless input.is_a?(String)
@@ -14,15 +25,6 @@ class Base64Processor
       end
 
       valid_base64?(base64_data) ? base64_data : nil
-    end
-
-    # Decode the provided Base64 string into binary data.
-    def decode_base64_data(data)
-      extracted_data = extract_base64_data(data)
-      return if extracted_data.blank?
-
-      decoded_data = Base64.decode64(extracted_data)
-      decoded_data.presence # Rails' `presence` returns nil if the string is blank
     end
 
     # Validate if a string is a valid Base64 encoded format.

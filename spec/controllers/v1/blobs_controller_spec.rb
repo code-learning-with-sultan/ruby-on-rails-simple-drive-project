@@ -67,7 +67,7 @@ RSpec.describe V1::BlobsController, type: :controller do
         request.headers['Authorization'] = "Bearer #{valid_token}"
         post :create, params: { id: blob_id, data: blob_data }
 
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:internal_server_error)
         expect(JSON.parse(response.body)).to eq({ "error" => "Storage error: StandardError" })
       end
     end

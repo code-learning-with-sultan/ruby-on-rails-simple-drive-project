@@ -22,14 +22,14 @@ module StorageAdapters
 
     def store(id, decoded_data)
       begin
-        # HTTP request headers
+        # Prepare HTTP request headers
         headers = aws4_headers(decoded_data, "PUT", id)
         headers["Content-Type"] = "text/plain"
 
         # HTTP request endpoint
         endpoint = "https://#{@bucket}.s3.#{@region}.amazonaws.com/#{id}"
 
-        # Sending the PUT request
+        # Send the PUT request
         uri = URI.parse(endpoint)
         http = Net::HTTP.new(uri.host, uri.port)
         http.use_ssl = true
@@ -37,50 +37,49 @@ module StorageAdapters
         request.body = decoded_data
 
         response = http.request(request)
+        raise "Error uploading file: #{response.code} - #{response.body}" unless response.is_a?(Net::HTTPSuccess)
 
-        if response.is_a?(Net::HTTPSuccess)
-          true
-        else
-          raise "Error uploading file: #{response.code} - #{response.body}"
-        end
+        true # Return true if the operation succeeded
+      rescue SocketError => e
+        raise "Network error: #{e.message}. Please check your internet connection or the AWS endpoint."
+      rescue Net::OpenTimeout, Net::ReadTimeout => e
+        raise "Timeout error: #{e.message}. The request took too long to respond."
       rescue StandardError => e
-        raise "An error occurred while storing blob with ID #{id}: #{e.message}"
-      rescue => e # Catch-all for any other errors
         raise "An error occurred while storing blob with ID #{id}: #{e.message}"
       end
     end
 
     def retrieve(id)
       begin
-        # HTTP request headers
+        # Prepare HTTP request headers
         headers = aws4_headers("", "GET", id)
 
         # HTTP request endpoint
         endpoint = "https://#{@bucket}.s3.#{@region}.amazonaws.com/#{id}"
 
-        # Sending the GET request
+        # Send the GET request
         uri = URI.parse(endpoint)
         http = Net::HTTP.new(uri.host, uri.port)
         http.use_ssl = true
         request = Net::HTTP::Get.new(uri.request_uri, headers)
 
         response = http.request(request)
+        raise "Error retrieving file: #{response.code} - #{response.body}" unless response.is_a?(Net::HTTPSuccess)
 
-        if response.is_a?(Net::HTTPSuccess)
-          # Retrieve the file's contents
-          decoded_data = response.body
+        # Retrieve the file's contents
+        decoded_data = response.body
+        raise "Data with ID #{id} not found", :not_found if decoded_data.nil? || decoded_data.empty?
 
-          # Encode the response body in Base64
-          encoded_data = Base64.strict_encode64(decoded_data)
+        # Encode the response body in Base64
+        encoded_data = Base64.strict_encode64(decoded_data)
 
-          # return the encoded blob
-          encoded_data
-        else
-          raise "Error retrieving file: #{response.code} - #{response.body}"
-        end
+        # return the encoded blob
+        encoded_data
+      rescue SocketError => e
+        raise "Network error: #{e.message}. Please check your internet connection or the AWS endpoint."
+      rescue Net::OpenTimeout, Net::ReadTimeout => e
+        raise "Timeout error: #{e.message}. The request took too long to respond."
       rescue StandardError => e
-        raise "An error occurred while retrieving blob with ID #{id}: #{e.message}"
-      rescue => e # Catch-all for any other errors
         raise "An error occurred while retrieving blob with ID #{id}: #{e.message}"
       end
     end
@@ -119,10 +118,8 @@ module StorageAdapters
         "x-amz-content-sha256" => payload_hash,
         "Authorization" => authorization_header
       }
-    end
-
-    def sign(key, msg)
-      OpenSSL::HMAC.digest("sha256", key, msg)
+    rescue StandardError => e
+      raise "Error generating AWS4 headers: #{e.message}"
     end
 
     def get_signature_key(key, date_stamp, region_name, service_name)
@@ -131,6 +128,14 @@ module StorageAdapters
       k_service = sign(k_region, service_name)
       k_signing = sign(k_service, "aws4_request")
       k_signing
+    rescue StandardError => e
+      raise "Error generating signature key: #{e.message}"
+    end
+
+    def sign(key, msg)
+      OpenSSL::HMAC.digest("sha256", key, msg)
+    rescue StandardError => e
+      raise "Error signing message: #{e.message}"
     end
   end
 end

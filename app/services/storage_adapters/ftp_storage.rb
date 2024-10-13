@@ -30,8 +30,6 @@ module StorageAdapters
         raise "FTP reply error while storing blob with ID #{id}: #{e.message}"
       rescue StandardError => e
         raise "An error occurred while storing blob with ID #{id}: #{e.message}"
-      rescue => e # Catch-all for any other errors
-        raise "An error occurred while storing blob with ID #{id}: #{e.message}"
       end
     end
 
@@ -39,6 +37,7 @@ module StorageAdapters
       begin
         # Retrieve the file's contents
         decoded_data = @ftp.getbinaryfile(id, nil)
+        raise "Data with ID #{id} not found", :not_found if decoded_data.nil? || decoded_data.empty?
 
         # Encode the response body in Base64
         encoded_data = Base64.strict_encode64(decoded_data)
@@ -51,8 +50,6 @@ module StorageAdapters
         raise "FTP reply error while retrieving blob with ID #{id}: #{e.message}"
       rescue StandardError => e
         raise "An error occurred while retrieving blob with ID #{id}: #{e.message}"
-      rescue => e # Catch-all for any other errors
-        raise "An error occurred while retrieving blob with ID #{id}: #{e.message}"
       end
     end
 
@@ -64,8 +61,6 @@ module StorageAdapters
       rescue Net::FTPPermError => e
         raise "Permission error while connecting to FTP: #{e.message}"
       rescue StandardError => e
-        raise "An error occurred while connecting to FTP: #{e.message}"
-      rescue => e # Catch-all for any other errors
         raise "An error occurred while connecting to FTP: #{e.message}"
       end
     end
