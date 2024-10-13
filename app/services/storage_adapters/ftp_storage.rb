@@ -15,17 +15,15 @@ module StorageAdapters
       begin
         # Create a temporary file to store the decoded data
         Tempfile.create([ "uploaded_file", ".bin" ]) do |file|
-          file.binmode          # Set binary mode for the file
+          file.binmode              # Set binary mode for the file
           file.write(decoded_data)  # Write the decoded data to the file
-          file.rewind           # Rewind the file pointer to the beginning
+          file.rewind               # Rewind the file pointer to the beginning
 
           # Upload the file to the FTP server
           @ftp.putbinaryfile(file.path, id)  # Use the file path for uploading
         end
 
         true # Return true if the operation succeeded
-      rescue ArgumentError => e
-        raise ArgumentError, "Base64 decoding error for blob with ID #{id}: #{e.message}"
       rescue Net::FTPPermError => e
         raise "Permission error while storing blob with ID #{id}: #{e.message}"
       rescue Net::FTPReplyError => e

@@ -62,13 +62,13 @@ RSpec.describe V1::BlobsController, type: :controller do
 
     context 'with storage failure' do
       it 'returns an error when storage fails' do
-        allow(storage_adapter).to receive(:store).with(blob_id, encoded_data).and_return(false)
+        allow(storage_adapter).to receive(:store).with(blob_id, encoded_data).and_raise(StandardError)
 
         request.headers['Authorization'] = "Bearer #{valid_token}"
         post :create, params: { id: blob_id, data: blob_data }
 
         expect(response).to have_http_status(:unprocessable_entity)
-        expect(JSON.parse(response.body)).to eq({ "error" => "Failed to store blob" })
+        expect(JSON.parse(response.body)).to eq({ "error" => "Storage error: StandardError" })
       end
     end
 

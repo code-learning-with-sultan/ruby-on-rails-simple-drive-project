@@ -14,11 +14,12 @@ module V1
       render_error(blob.errors.full_messages.join(", ")) and return unless blob.save
 
       # Store the blob in the specified storage
-      if @storage_adapter.store(blob.id, decoded_data)
+      begin
+        @storage_adapter.store(blob.id, decoded_data)
         render json: { message: "Blob stored successfully" }, status: :created
-      else
+      rescue => e  # Catch any error raised by the store method
         blob.destroy # Rollback blob creation if storage fails
-        render_error("Failed to store blob")
+        render_error("Storage error: #{e.message}", :unprocessable_entity) # Generic error message
       end
     rescue ArgumentError => e
       render_error("Invalid data: #{e.message}")
@@ -33,15 +34,21 @@ module V1
       blob = Blob.find_by(id: params[:id])
       render_error("Blob not found", :not_found) and return unless blob
 
-      encoded_data = @storage_adapter.retrieve(blob.id)
-      render_error("Blob file not found", :not_found) and return unless encoded_data
+      begin
+        encoded_data = @storage_adapter.retrieve(blob.id)
+        render_error("Blob file not found", :not_found) and return unless encoded_data
 
-      render json: {
-        id: blob.id,
-        data: encoded_data,
-        size: blob.size,
-        created_at: blob.created_at
-      }
+        render json: {
+          id: blob.id,
+          data: encoded_data,
+          size: blob.size,
+          created_at: blob.created_at
+        }
+      rescue StandardError => e
+        render_error(e.message, :not_found)
+      rescue => e # Catch-all for any other errors
+        render_error(e.message, :not_found)
+      end
     end
 
     private
